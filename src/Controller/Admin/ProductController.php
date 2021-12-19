@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Product;
+use App\Form\DTO\EditProductModel;
 use App\Form\EditProductFormType;
 use App\Form\Handler\ProductFormHandler;
 use App\Repository\ProductRepository;
@@ -37,26 +38,30 @@ class ProductController extends AbstractController
      */
     public function edit(Request $request, ProductFormHandler $productFormHandler, Product $product = null): Response
     {
-        if(!$product){
-            $product = new Product();
-        }
+        $editProductModel = EditProductModel::makeFromProduct($product);
 
-        $form = $this->createForm(EditProductFormType::class, $product);
+        $form = $this->createForm(EditProductFormType::class, $editProductModel);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
 
-            $product = $productFormHandler->processEditForm($product, $form);
+            $product = $productFormHandler->processEditForm($editProductModel, $form);
+
+            $this->addFlash('success','Your changes were saved');
 
             return $this->redirectToRoute('admin_product_edit', ['id' => $product->getId()]);
         }
 
-        $images = $product->getProductImages()
+        if($form->isSubmitted() && !$form->isValid()){
+            $this->addFlash('warning','Your changes weren\'t saved');
+        }
+
+        $images = $product
             ? $product->getProductImages()->getValues()
             : [];
         return $this->render('admin/product/edit.html.twig', [
             'product' => $product,
-            'images' => $product->getProductImages(),
+            'images' => $images,
             'form' => $form->createView()
         ]);
     }
@@ -71,6 +76,9 @@ class ProductController extends AbstractController
     public function delete(Product $product, ProductManager $productManager): Response
     {
         $productManager->remove($product);
+
+        $this->addFlash('warning','The product has been successfully removed!');
+
         return $this->redirectToRoute('admin_product_list');
     }
 }
