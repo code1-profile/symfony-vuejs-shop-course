@@ -47,6 +47,13 @@ class EditProductModel
      */
     public $description;
 
+
+    /**
+     * @Assert\NotBlank(message="Please select a category")
+     * @var Category
+     */
+    public $category;
+
     /**
      * @var bool
      */

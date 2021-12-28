@@ -2,6 +2,10 @@
 
 namespace App\Controller\Admin;
 
+use App\Utils\Manager\CategoryManager;
+use App\Form\Admin\EditCategoryFormType;
+use App\Form\DTO\EditCategoryModel;
+use App\Form\Handler\CategoryFormHandler;
 use App\Repository\CategoryRepository;
 use App\Entity\Category;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -19,7 +23,7 @@ class CategoryController extends AbstractController
      */
     public function list(CategoryRepository $categoryRepository): Response
     {
-        $categories = $categoryRepository->findBy([], ['id' => 'DESC']);
+        $categories = $categoryRepository->findBy(['isDeleted'=>false], ['id' => 'DESC']);
 
         return $this->render('admin/category/list.html.twig', [
             'categories' => $categories,
@@ -32,7 +36,30 @@ class CategoryController extends AbstractController
      */
     public function edit(Request $request, CategoryFormHandler $categoryFormHandler, Category $category = null): Response
     {
-      //
+        $editCategoryModel = EditCategoryModel::makeFromCategory( $category );
+
+        $form = $this->createForm(EditCategoryFormType::class, $editCategoryModel);
+
+        $form->handleRequest($request);
+
+        if( $form->isSubmitted() && $form->isValid()){
+
+            $category = $categoryFormHandler->processEditForm( $editCategoryModel );
+
+            $this->addFlash('success','Your changes were saved');
+
+            return $this->redirectToRoute('admin_category_edit', ['id' => $category->getId()]);
+        }
+
+        if($form->isSubmitted() && !$form->isValid()){
+            $this->addFlash('warning','Your changes weren\'t saved');
+        }
+
+        return $this->render( 'admin/category/edit.html.twig', [
+            'category' => $category,
+            'form' => $form->createView()
+        ]);
+
     }
 
     /**
@@ -40,6 +67,10 @@ class CategoryController extends AbstractController
      */
     public function delete(Category $category, CategoryManager $categoryManager): Response
     {
+        $categoryManager->remove($category);
 
+        $this->addFlash('warning', 'The category was successfully deleted!');
+
+        return $this->redirectToRoute('admin_category_list');
     }
 }
